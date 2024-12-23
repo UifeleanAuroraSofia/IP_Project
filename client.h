@@ -1,1 +1,1 @@
-int ClientMessage(int serverSocket, int clientSocket);
+void ClientMessage(int clientSocket);
