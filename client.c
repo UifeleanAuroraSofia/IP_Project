@@ -5,23 +5,23 @@
 #include <string.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define PORT 80
 
-int ClientMessage(int serverSocket, int clientSocket) {
+void ClientMessage(int clientSocket) {
 
 	struct addrinfo hints, *servinfo;
-	// struct sockaddr_in6 server_addr;
-	struct sockaddr_in server_addr; 
-	int status, sockfd, ret;
-        // char *msg = "GET / HTTP/1.0\r\n\r\n";
+	struct sockaddr_in6 server_addr;
+	int status, siteSocket, ret;
 	char *msg = "GET / HTTP/1.0\r\n\r\n";
 	int trimitere, result;
 	char buffer[500];
-	char *site = "httpforever.com";
+	char *site = "www.ietf.org";
+	FILE *fisier;
 	memset(&hints, 0, sizeof hints);
-	// hints.ai_family = AF_INET6;
-	hints.ai_family = AF_INET;
+	hints.ai_family = AF_INET6;
 	hints.ai_socktype = SOCK_STREAM;
 	status = getaddrinfo(site, "80", &hints, &servinfo);
 
@@ -30,8 +30,8 @@ int ClientMessage(int serverSocket, int clientSocket) {
    	 exit(1);
 	}
 
-	sockfd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
-	if (sockfd == -1) {
+	siteSocket = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+	if (siteSocket == -1) {
        	 printf("socket creation failed...\n");
        	 exit(0);
    	 }
@@ -39,12 +39,11 @@ int ClientMessage(int serverSocket, int clientSocket) {
        	 printf("Socket successfully created..\n");
    	 bzero(&hints, sizeof(hints));
 
-	 //server_addr.sin6_family = AF_INET6;
-	 //inet_pton(AF_INET6, "2001:470:0:503::2", &server_addr.sin6_addr);
-	 //server_addr.sin6_port = htons(PORT);
+	 server_addr.sin6_family = AF_INET6;
+	 inet_pton(AF_INET6, "::1", &server_addr.sin6_addr);
+	 server_addr.sin6_port = htons(PORT);
 
-	// ret = connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
-	ret = connect(sockfd, servinfo->ai_addr, servinfo->ai_addrlen);
+	 ret = connect(siteSocket, (struct sockaddr*)&server_addr, sizeof(server_addr));
 	 if (ret == -1) {
 		perror("connect()");
 		exit(0);
@@ -53,29 +52,34 @@ int ClientMessage(int serverSocket, int clientSocket) {
 	else
 	 printf("Connection created successfully");
 
-	// etapa 2
-	trimitere = send(sockfd, msg, strlen(msg), 0);
+	trimitere = send(siteSocket, msg, strlen(msg), 0);
 	if (trimitere == -1){
 		perror("send()");
 		exit(0);
 	}
-	else {
-		printf("\nNumarul de octeti trimisi: %d ",trimitere);
-	}
 	
+	fisier =  fopen("fisier.html", "w");
+        if (fisier == NULL) {
+       		 perror("Error opening file");
+       		 close(siteSocket);
+       		 return EXIT_FAILURE;
+   	} else {
+		fclose(fopen("fisier.html", "w"));
+	}
+
 	do {
-		result = recv(sockfd, buffer, 500, 0);
+		result = recv(siteSocket, buffer, 500, 0);
 		if (result > 0) {
-			printf("\nNumarul de octeti primiti: %d", result);
-			printf("%.*s\n", result,  buffer);
+			fwrite(buffer, 1, result, fisier);
+			send(clientSocket, buffer, result, 0);
 		}
 		else if (result == 0) {
-			printf("\nConexiune inchisa");
+			printf("\nConexiune inchisa cu site-ul");
 		}
 		else {
 			printf("\nConexiune esuata");
 		}
 	}while(result > 0);
-	close(sockfd);
-        return result;
+	close(siteSocket);
+	fclose(fisier);
 }
